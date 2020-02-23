@@ -49,7 +49,14 @@ impl Cpu {
                 0x00EE => panic!("{:04x} not implemented!", opcode),
                 _ => panic!("Unknown opcode {:04x}", opcode),
             },
-            0x1000 => panic!("{:04x} not implemented!", opcode),
+            0x1000 => {
+                // 1nnn - JP addr
+                // Jump to location nnn.
+                let addr = opcode & 0x0FFF;
+                self.pc = addr;
+
+                self.print_i(old, opcode, &format!("JMP {:04x}", addr));
+            },
             0x2000 => panic!("{:04x} not implemented!", opcode),
             0x3000 => panic!("{:04x} not implemented!", opcode),
             0x4000 => {
@@ -105,7 +112,16 @@ impl Cpu {
             },
             0xB000 => panic!("{:04x} not implemented!", opcode),
             0xC000 => panic!("{:04x} not implemented!", opcode),
-            0xD000 => panic!("{:04x} not implemented!", opcode),
+            0xD000 => {
+                // Dxyn - DRW Vx, Vy, nibble
+                // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+                let x_idx = (opcode & 0x0F00) >> 8;
+                let y_idx = (opcode & 0x00F0) >> 4;
+                let nibble = opcode & 0x000F;
+
+                // TODO: Noop display related opcodes for now
+                self.print_i(old, opcode, &format!("DRW V{}, V{}, {:x}", x_idx, y_idx, nibble));
+            },
             0xE000 => match opcode & 0xF0FF {
                 0xE09E => panic!("{:04x} not implemented!", opcode),
                 0xE0A1 => panic!("{:04x} not implemented!", opcode),
@@ -116,7 +132,14 @@ impl Cpu {
                 0xF00A => panic!("{:04x} not implemented!", opcode),
                 0xF015 => panic!("{:04x} not implemented!", opcode),
                 0xF018 => panic!("{:04x} not implemented!", opcode),
-                0xF01E => panic!("{:04x} not implemented!", opcode),
+                0xF01E => {
+                    // Fx1E - ADD I, Vx
+                    // Set I = I + Vx.
+                    let idx = (opcode & 0x0F00) >> 8;
+                    self.i += self.regs[idx as usize] as u16;
+
+                    self.print_i(old, opcode, &format!("ADD I, V{}", idx));
+                },
                 0xF029 => panic!("{:04x} not implemented!", opcode),
                 0xF033 => panic!("{:04x} not implemented!", opcode),
                 0xF055 => panic!("{:04x} not implemented!", opcode),
