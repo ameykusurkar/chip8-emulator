@@ -9,13 +9,12 @@ pub struct Window {
 
 impl Window {
     pub fn new(width: usize, height: usize, pixel_width: usize) -> Window {
-        let mut window = minifb::Window::new(
+        let window = minifb::Window::new(
             "",
             width * pixel_width,
             height * pixel_width,
             minifb::WindowOptions::default()
         ).unwrap();
-        window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
         Window { window, width, height, pixel_width }
     }
