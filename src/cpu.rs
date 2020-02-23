@@ -113,7 +113,21 @@ impl Cpu {
                 0x8001 => panic!("{:04x} not implemented!", opcode),
                 0x8002 => panic!("{:04x} not implemented!", opcode),
                 0x8003 => panic!("{:04x} not implemented!", opcode),
-                0x8004 => panic!("{:04x} not implemented!", opcode),
+                0x8004 => {
+                    // 8xy4 - ADD Vx, Vy
+                    // Set Vx = Vx + Vy, set VF = carry.
+                    let x_idx = ((opcode & 0x0F00) >> 8) as usize;
+                    let y_idx = ((opcode & 0x00F0) >> 4) as usize;
+
+                    let x = self.regs[x_idx] as u32;
+                    let y = self.regs[y_idx] as u32;
+                    let result = x + y;
+
+                    self.regs[0xF] = (result > 0xFF) as u8;
+                    self.regs[x_idx] = result as u8;
+
+                    self.print_i(old, opcode, &format!("ADD V{}, V{}", x_idx, y_idx));
+                },
                 0x8005 => panic!("{:04x} not implemented!", opcode),
                 0x8006 => panic!("{:04x} not implemented!", opcode),
                 0x8007 => panic!("{:04x} not implemented!", opcode),
