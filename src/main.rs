@@ -20,7 +20,7 @@ fn main() -> std::io::Result<()> {
     let mut cpu = Cpu::new();
     cpu.load_binary(&buffer);
 
-    let mut window = Window::new(64, 32);
+    let mut window = Window::new(64, 32, 10);
 
     loop {
         cpu.cycle();
