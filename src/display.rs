@@ -1,11 +1,13 @@
+use crate::{WIDTH, HEIGHT};
+
 pub struct Display {
-    buffer: [bool; 64 * 32],
+    buffer: [bool; WIDTH * HEIGHT],
 }
 
 impl Display {
     pub fn new() -> Display {
         Display {
-            buffer: [false; 64 * 32],
+            buffer: [false; WIDTH * HEIGHT],
         }
     }
 
@@ -20,9 +22,11 @@ impl Display {
     }
 
     fn draw_byte(&mut self, x: u32, y: u32, byte: u8) {
-        for i in 0..8 {
-            let bit = ((1 << (8-i-1)) & byte) > 0;
-            self.buffer[(y * 64 + x + i) as usize] ^= bit;
+        let j = y % HEIGHT as u32;
+        for n in 0..8 {
+            let bit = ((1 << (8-n-1)) & byte) > 0;
+            let i = (x + n) % WIDTH as u32;
+            self.buffer[(j * (WIDTH as u32) + i) as usize] ^= bit;
         }
     }
 

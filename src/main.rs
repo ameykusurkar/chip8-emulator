@@ -10,6 +10,9 @@ mod window;
 use cpu::Cpu;
 use window::Window;
 
+const WIDTH: usize = 64;
+const HEIGHT: usize = 32;
+
 fn main() -> std::io::Result<()> {
     let path = std::env::args().nth(1);
     let mut f = File::open(path.unwrap())?;
@@ -20,7 +23,7 @@ fn main() -> std::io::Result<()> {
     let mut cpu = Cpu::new();
     cpu.load_binary(&buffer);
 
-    let mut window = Window::new(64, 32, 10);
+    let mut window = Window::new(WIDTH, HEIGHT, 10);
 
     loop {
         cpu.cycle();
