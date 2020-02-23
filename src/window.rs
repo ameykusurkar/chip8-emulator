@@ -25,6 +25,7 @@ impl Window {
 
         let mut window_buffer = vec![0; window_width * window_height];
 
+        // TODO: Use minifb::Scale
         for (idx, pixel) in buffer.iter().enumerate() {
             for i in 0..self.pixel_width {
                 for j in 0..self.pixel_width {

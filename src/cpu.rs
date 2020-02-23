@@ -89,7 +89,21 @@ impl Cpu {
 
                 self.print_i(old, opcode, &format!("SNE V{}, {:02x}", idx, byte));
             },
-            0x5000 => panic!("{:04x} not implemented!", opcode),
+            0x5000 => {
+                // 5xy0 - SE Vx, Vy
+                // Skip next instruction if Vx == Vy.
+                let x_idx = ((opcode & 0x0F00) >> 8) as usize;
+                let y_idx = ((opcode & 0x00F0) >> 4) as usize;
+
+                let x = self.regs[x_idx] as u32;
+                let y = self.regs[y_idx] as u32;
+
+                if x == y {
+                    self.pc += 2;
+                }
+
+                self.print_i(old, opcode, &format!("SE V{}, V{}", x_idx, y_idx));
+            },
             0x6000 => {
                 // 6xkk - LD Vx, byte
                 // Set Vx = kk.
@@ -109,7 +123,16 @@ impl Cpu {
                 self.print_i(old, opcode, &format!("ADD V{}, {:02x}", idx, byte));
             }
             0x8000 => match opcode & 0xF00F {
-                0x8000 => panic!("{:04x} not implemented!", opcode),
+                0x8000 => {
+                    // 8xy0 - LD Vx, Vy
+                    // Set Vx = Vy.
+                    let x_idx = ((opcode & 0x0F00) >> 8) as usize;
+                    let y_idx = ((opcode & 0x00F0) >> 4) as usize;
+
+                    self.regs[x_idx] = self.regs[y_idx];
+
+                    self.print_i(old, opcode, &format!("LD V{}, V{}", x_idx, y_idx));
+                },
                 0x8001 => panic!("{:04x} not implemented!", opcode),
                 0x8002 => panic!("{:04x} not implemented!", opcode),
                 0x8003 => panic!("{:04x} not implemented!", opcode),
@@ -128,13 +151,40 @@ impl Cpu {
 
                     self.print_i(old, opcode, &format!("ADD V{}, V{}", x_idx, y_idx));
                 },
-                0x8005 => panic!("{:04x} not implemented!", opcode),
+                0x8005 => {
+                    // 8xy5 - SUB Vx, Vy
+                    // Set Vx = Vx - Vy, set VF = NOT borrow.
+                    let x_idx = ((opcode & 0x0F00) >> 8) as usize;
+                    let y_idx = ((opcode & 0x00F0) >> 4) as usize;
+
+                    let x = self.regs[x_idx] as u32;
+                    let y = self.regs[y_idx] as u32;
+
+                    self.regs[0xF] = (x > y) as u8;
+                    self.regs[x_idx] = (x - y) as u8;
+
+                    self.print_i(old, opcode, &format!("SUB V{}, V{}", x_idx, y_idx));
+                },
                 0x8006 => panic!("{:04x} not implemented!", opcode),
                 0x8007 => panic!("{:04x} not implemented!", opcode),
                 0x800E => panic!("{:04x} not implemented!", opcode),
                 _ => panic!("Unknown opcode {:04x}", opcode),
             },
-            0x9000 => panic!("{:04x} not implemented!", opcode),
+            0x9000 => {
+                // 9xy0 - SNE Vx, Vy
+                // Skip next instruction if Vx != Vy.
+                let x_idx = ((opcode & 0x0F00) >> 8) as usize;
+                let y_idx = ((opcode & 0x00F0) >> 4) as usize;
+
+                let x = self.regs[x_idx] as u32;
+                let y = self.regs[y_idx] as u32;
+
+                if x != y {
+                    self.pc += 2;
+                }
+
+                self.print_i(old, opcode, &format!("SNE V{}, V{}", x_idx, y_idx));
+            },
             0xA000 => {
                 // Annn - LD I, addr
                 // Set I = nnn.
@@ -191,8 +241,29 @@ impl Cpu {
                 },
                 0xF029 => panic!("{:04x} not implemented!", opcode),
                 0xF033 => panic!("{:04x} not implemented!", opcode),
-                0xF055 => panic!("{:04x} not implemented!", opcode),
-                0xF065 => panic!("{:04x} not implemented!", opcode),
+                0xF055 => {
+                    // Fx55 - LD [I], Vx
+                    // Store registers V0 through Vx in memory starting at location I.
+                    let idx = ((opcode & 0x0F00) >> 8) as usize;
+
+                    for (offset, val) in self.regs[0..idx+1].iter().enumerate() {
+                        self.memory[self.i as usize + offset] = *val;
+                    }
+
+                    self.print_i(old, opcode, &format!("LD [I], V{}", idx));
+                },
+                0xF065 => {
+                    // Fx65 - LD Vx, [I]
+                    // Read registers V0 through Vx from memory starting at location I.
+                    let idx = ((opcode & 0x0F00) >> 8) as usize;
+
+                    let start = self.i as usize;
+                    for (i, val) in self.memory[start..start+idx+1].iter().enumerate() {
+                        self.regs[i] = *val;
+                    }
+
+                    self.print_i(old, opcode, &format!("LD V{}, [I]", idx));
+                },
                 _ => panic!("Unknown opcode {:04x}", opcode),
             },
             _ => panic!("Unknown opcode {:04x}", opcode),
