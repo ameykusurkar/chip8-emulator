@@ -1,4 +1,5 @@
 use crate::display::Display;
+use rand::Rng;
 
 pub struct Cpu {
     memory: [u8; 4096],
@@ -129,7 +130,16 @@ impl Cpu {
                 self.print_i(old, opcode, &format!("LD I, {:04x}", addr));
             },
             0xB000 => panic!("{:04x} not implemented!", opcode),
-            0xC000 => panic!("{:04x} not implemented!", opcode),
+            0xC000 => {
+                // Cxkk - RND Vx, byte
+                // Set Vx = random byte AND kk.
+                let idx = (opcode & 0x0F00) >> 8;
+                let byte = (opcode & 0x00FF) as u8;
+                let rand_byte: u8 = rand::thread_rng().gen();
+                self.regs[idx as usize] = rand_byte & byte;
+
+                self.print_i(old, opcode, &format!("RND V{}, {:02x}", idx, byte));
+            },
             0xD000 => {
                 // Dxyn - DRW Vx, Vy, nibble
                 // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
