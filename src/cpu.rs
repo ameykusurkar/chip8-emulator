@@ -66,7 +66,17 @@ impl Cpu {
                 self.print_i(old, opcode, &format!("JMP {:04x}", addr));
             },
             0x2000 => panic!("{:04x} not implemented!", opcode),
-            0x3000 => panic!("{:04x} not implemented!", opcode),
+            0x3000 => {
+                // 3xkk - SE Vx, byte
+                // Skip next instruction if Vx == kk.
+                let idx = (opcode & 0x0F00) >> 8;
+                let byte = opcode & 0x00FF;
+                if self.regs[idx as usize] == byte as u8 {
+                    self.pc += 2;
+                }
+
+                self.print_i(old, opcode, &format!("SE V{}, {:02x}", idx, byte));
+            },
             0x4000 => {
                 // 4xkk - SNE Vx, byte
                 // Skip next instruction if Vx != kk.
