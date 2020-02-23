@@ -128,11 +128,12 @@ impl Cpu {
                 let n = (opcode & 0x000F) as usize;
 
                 let start = self.i as usize;
-                self.display.draw(
+                let pixel_erased = self.display.draw(
                     self.regs[x_idx] as u32,
                     self.regs[y_idx] as u32,
                     &self.memory[start..start + n],
                 );
+                self.regs[0xF] = pixel_erased as u8;
 
                 self.print_i(old, opcode, &format!("DRW V{}, V{}, {:x}", x_idx, y_idx, n));
             },

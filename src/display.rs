@@ -15,19 +15,33 @@ impl Display {
         &self.buffer
     }
 
-    pub fn draw(&mut self, x: u32, y: u32, sprite: &[u8]) {
-        for (offset, byte) in sprite.iter().enumerate() {
-            self.draw_byte(x, y + (offset as u32), *byte);
-        }
+    // Returns true if any pixel was un-set while drawing
+    pub fn draw(&mut self, x: u32, y: u32, sprite: &[u8]) -> bool {
+        let erased_pixels: Vec<bool> = sprite.iter()
+            .enumerate()
+            .map(|(offset, byte)| self.draw_byte(x, y + (offset as u32), *byte))
+            .collect();
+
+        erased_pixels.iter().any(|x| *x)
     }
 
-    fn draw_byte(&mut self, x: u32, y: u32, byte: u8) {
+    // Returns true if any pixel was un-set while drawing
+    fn draw_byte(&mut self, x: u32, y: u32, byte: u8) -> bool {
+        let mut erased = false;
+
         let j = y % HEIGHT as u32;
         for n in 0..8 {
             let bit = ((1 << (8-n-1)) & byte) > 0;
             let i = (x + n) % WIDTH as u32;
-            self.buffer[(j * (WIDTH as u32) + i) as usize] ^= bit;
+            let idx = (j * (WIDTH as u32) + i) as usize;
+
+            // If pixel was already set, this will cause it to be erased
+            erased |= self.buffer[idx] & bit;
+
+            self.buffer[idx] ^= bit;
         }
+
+        erased
     }
 
     pub fn clear(&mut self) {
