@@ -17,13 +17,11 @@ fn main() -> std::io::Result<()> {
     let mut cpu = Cpu::new();
     cpu.load_binary(&buffer);
 
-    for _ in 0..buffer.len() / 2 {
+    loop {
         cpu.cycle();
 
         // Just for now, while we print execution
         std::io::stdout().flush()?;
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
-
-    Ok(())
 }
