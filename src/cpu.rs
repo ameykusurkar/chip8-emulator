@@ -1,8 +1,11 @@
+use crate::display::Display;
+
 pub struct Cpu {
     memory: [u8; 4096],
     pc: u16,
     i: u16,
     regs: [u8; 16],
+    display: Display,
 }
 
 impl Cpu {
@@ -12,6 +15,7 @@ impl Cpu {
             pc: 0x200,
             i: 0,
             regs: [0; 16],
+            display: Display::new(),
         }
     }
 
@@ -19,6 +23,10 @@ impl Cpu {
         let start = 0x200;
         let binary_area = &mut self.memory[start..start+binary.len()];
         binary_area.copy_from_slice(binary);
+    }
+
+    pub fn display_buffer(&self) -> &[bool] {
+        self.display.buffer()
     }
 
     pub fn cycle(&mut self) {
@@ -43,7 +51,7 @@ impl Cpu {
                 0x00E0 => {
                     // 00E0 - CLS
                     // Clear the display.
-                    // TODO: Since we don't have a display to clear, noop.
+                    self.display.clear();
                     self.print_i(old, opcode, "CLS");
                 },
                 0x00EE => panic!("{:04x} not implemented!", opcode),
@@ -115,12 +123,18 @@ impl Cpu {
             0xD000 => {
                 // Dxyn - DRW Vx, Vy, nibble
                 // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-                let x_idx = (opcode & 0x0F00) >> 8;
-                let y_idx = (opcode & 0x00F0) >> 4;
-                let nibble = opcode & 0x000F;
+                let x_idx = ((opcode & 0x0F00) >> 8) as usize;
+                let y_idx = ((opcode & 0x00F0) >> 4) as usize;
+                let n = (opcode & 0x000F) as usize;
 
-                // TODO: Noop display related opcodes for now
-                self.print_i(old, opcode, &format!("DRW V{}, V{}, {:x}", x_idx, y_idx, nibble));
+                let start = self.i as usize;
+                self.display.draw(
+                    self.regs[x_idx] as u32,
+                    self.regs[y_idx] as u32,
+                    &self.memory[start..start + n],
+                );
+
+                self.print_i(old, opcode, &format!("DRW V{}, V{}, {:x}", x_idx, y_idx, n));
             },
             0xE000 => match opcode & 0xF0FF {
                 0xE09E => panic!("{:04x} not implemented!", opcode),
