@@ -30,9 +30,12 @@ impl Cpu {
         self.display.buffer()
     }
 
-    pub fn cycle(&mut self) {
+    // Returns true if display needs redrawing
+    pub fn cycle(&mut self) -> bool {
         let opcode = self.fetch_opcode();
         self.execute(opcode);
+
+        opcode & 0xF000 == 0xD000
     }
 
     fn fetch_opcode(&self) -> u16 {

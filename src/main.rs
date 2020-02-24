@@ -25,13 +25,20 @@ fn main() -> std::io::Result<()> {
 
     let mut window = Window::new(WIDTH, HEIGHT);
 
+    let mut last_update = std::time::Instant::now();
+
     loop {
-        cpu.cycle();
+        let should_redraw = cpu.cycle();
 
         // Just for now, while we print execution
         std::io::stdout().flush()?;
         std::thread::sleep(std::time::Duration::from_millis(10));
 
-        window.update(cpu.display_buffer());
+        // For some reason, the window freezes if it has not been updated in
+        // a while, so make sure that it is updated at least every 100ms.
+        if should_redraw || last_update.elapsed().as_millis() > 100 {
+            window.update(cpu.display_buffer());
+            last_update = std::time::Instant::now();
+        }
     }
 }
