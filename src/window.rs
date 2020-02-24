@@ -4,42 +4,30 @@ pub struct Window {
     window: minifb::Window,
     width: usize,
     height: usize,
-    pixel_width: usize,
 }
 
 impl Window {
-    pub fn new(width: usize, height: usize, pixel_width: usize) -> Window {
+    pub fn new(width: usize, height: usize) -> Window {
+        let mut options = minifb::WindowOptions::default();
+        options.scale = minifb::Scale::X8;
+
         let window = minifb::Window::new(
             "",
-            width * pixel_width,
-            height * pixel_width,
-            minifb::WindowOptions::default()
+            width,
+            height,
+            options,
         ).unwrap();
 
-        Window { window, width, height, pixel_width }
+        Window { window, width, height }
     }
 
     pub fn update(&mut self, buffer: &[bool]) {
-        let window_width = self.width * self.pixel_width;
-        let window_height = self.height * self.pixel_width;
-
-        let mut window_buffer = vec![0; window_width * window_height];
-
-        // TODO: Use minifb::Scale
-        for (idx, pixel) in buffer.iter().enumerate() {
-            for i in 0..self.pixel_width {
-                for j in 0..self.pixel_width {
-                    let x = (idx % self.width) * self.pixel_width + i;
-                    let y = idx / self.width * self.pixel_width + j;
-                    if *pixel {
-                        window_buffer[y * window_width + x] = 0x00ECF0F1;
-                    }
-                }
-            }
-        }
+        let buffer: Vec<u32> = buffer.iter()
+            .map(|x| if *x { 0x00ECF0F1 } else { 0 })
+            .collect();
 
         self.window
-            .update_with_buffer(&window_buffer, window_width, window_height)
+            .update_with_buffer(&buffer, self.width, self.height)
             .unwrap();
     }
 }
