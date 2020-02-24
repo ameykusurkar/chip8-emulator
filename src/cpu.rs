@@ -163,7 +163,8 @@ impl Cpu {
                     let x = self.regs[x_idx] as u32;
                     let y = self.regs[y_idx] as u32;
 
-                    self.regs[0xF] = (x > y) as u8;
+                    // Set if NO borrow
+                    self.regs[0xF] = (x >= y) as u8;
                     self.regs[x_idx] = (x - y) as u8;
 
                     self.print_i(old, opcode, &format!("SUB V{}, V{}", x_idx, y_idx));
