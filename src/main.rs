@@ -13,6 +13,10 @@ use window::Window;
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 
+// in Hz
+const CLOCK_SPEED: u32 = 540;
+const REFRESH_RATE: u32 = 60;
+
 fn main() -> std::io::Result<()> {
     let path = std::env::args().nth(1);
     let mut f = File::open(path.unwrap())?;
@@ -25,20 +29,18 @@ fn main() -> std::io::Result<()> {
 
     let mut window = Window::new(WIDTH, HEIGHT);
 
-    let mut last_update = std::time::Instant::now();
+    let redraw_interval = (1000.0 / REFRESH_RATE as f64) as u64;
+    let cycles_per_refresh = CLOCK_SPEED / REFRESH_RATE;
 
     loop {
-        let should_redraw = cpu.cycle();
+        for _ in 0..cycles_per_refresh {
+            cpu.cycle();
+        }
 
         // Just for now, while we print execution
         std::io::stdout().flush()?;
-        std::thread::sleep(std::time::Duration::from_millis(10));
 
-        // For some reason, the window freezes if it has not been updated in
-        // a while, so make sure that it is updated at least every 100ms.
-        if should_redraw || last_update.elapsed().as_millis() > 100 {
-            window.update(cpu.display_buffer());
-            last_update = std::time::Instant::now();
-        }
+        std::thread::sleep(std::time::Duration::from_millis(redraw_interval));
+        window.update(cpu.display_buffer());
     }
 }
