@@ -41,6 +41,7 @@ fn main() -> std::io::Result<()> {
         std::io::stdout().flush()?;
 
         std::thread::sleep(std::time::Duration::from_millis(redraw_interval));
+        cpu.timer_interrupt();
         window.update(cpu.display_buffer());
     }
 }

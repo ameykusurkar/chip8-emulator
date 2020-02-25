@@ -7,6 +7,7 @@ pub struct Cpu {
     i: u16,
     regs: [u8; 16],
     display: Display,
+    delay_timer: u8,
 }
 
 impl Cpu {
@@ -17,6 +18,7 @@ impl Cpu {
             i: 0,
             regs: [0; 16],
             display: Display::new(),
+            delay_timer: 0,
         }
     }
 
@@ -24,6 +26,12 @@ impl Cpu {
         let start = 0x200;
         let binary_area = &mut self.memory[start..start+binary.len()];
         binary_area.copy_from_slice(binary);
+    }
+
+    pub fn timer_interrupt(&mut self) {
+        if self.delay_timer > 0 {
+            self.delay_timer -= 1;
+        }
     }
 
     pub fn display_buffer(&self) -> &[bool] {
@@ -233,7 +241,14 @@ impl Cpu {
             0xF000 => match opcode & 0xF0FF {
                 0xF007 => panic!("{:04x} not implemented!", opcode),
                 0xF00A => panic!("{:04x} not implemented!", opcode),
-                0xF015 => panic!("{:04x} not implemented!", opcode),
+                0xF015 => {
+                    // Fx15 - LD DT, Vx
+                    // Set delay timer = Vx.
+                    let x_idx = ((opcode & 0x0F00) >> 8) as usize;
+                    self.delay_timer = self.regs[x_idx];
+
+                    self.print_i(old, opcode, &format!("LD DT V{}", x_idx));
+                },
                 0xF018 => panic!("{:04x} not implemented!", opcode),
                 0xF01E => {
                     // Fx1E - ADD I, Vx
