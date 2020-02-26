@@ -149,21 +149,6 @@ impl Cpu {
 
                 self.print_i(old, opcode, &format!("SNE V{}, {:02x}", idx, byte));
             },
-            0x5000 => {
-                // 5xy0 - SE Vx, Vy
-                // Skip next instruction if Vx == Vy.
-                let x_idx = ((opcode & 0x0F00) >> 8) as usize;
-                let y_idx = ((opcode & 0x00F0) >> 4) as usize;
-
-                let x = self.regs[x_idx] as u32;
-                let y = self.regs[y_idx] as u32;
-
-                if x == y {
-                    self.pc += 2;
-                }
-
-                self.print_i(old, opcode, &format!("SE V{}, V{}", x_idx, y_idx));
-            },
             0x6000 => {
                 // 6xkk - LD Vx, byte
                 // Set Vx = kk.
@@ -182,91 +167,11 @@ impl Cpu {
 
                 self.print_i(old, opcode, &format!("ADD V{}, {:02x}", idx, byte));
             }
-            0x8000 => {
+            0x5000 | 0x8000 | 0x9000  => {
                 let x = ((opcode & 0x0F00) >> 8) as usize;
                 let y = ((opcode & 0x00F0) >> 4) as usize;
 
-                match opcode & 0xF00F {
-                    0x8000 => {
-                        // 8xy0 - LD Vx, Vy
-                        // Set Vx = Vy.
-                        self.regs[x] = self.regs[y];
-
-                        self.print_i(old, opcode, &format!("LD V{}, V{}", x, y));
-                    },
-                    0x8001 => panic!("{:04x} not implemented!", opcode),
-                    0x8002 => {
-                        // 8xy2 - AND Vx, Vy
-                        // Set Vx = Vx AND Vy.
-                        self.regs[x] &= self.regs[y];
-
-                        self.print_i(old, opcode, &format!("AND V{}, V{}", x, y));
-                    },
-                    0x8003 => {
-                        // 8xy3 - XOR Vx, Vy
-                        // Set Vx = Vx XOR Vy.
-                        self.regs[x] ^= self.regs[y];
-
-                        self.print_i(old, opcode, &format!("XOR V{}, V{}", x, y));
-                    }
-                    0x8004 => {
-                        // 8xy4 - ADD Vx, Vy
-                        // Set Vx = Vx + Vy, set VF = carry.
-                        let vx = self.regs[x] as u32;
-                        let vy = self.regs[y] as u32;
-                        let result = vx + vy;
-
-                        self.regs[0xF] = (result > 0xFF) as u8;
-                        self.regs[x] = result as u8;
-
-                        self.print_i(old, opcode, &format!("ADD V{}, V{}", x, y));
-                    },
-                    0x8005 => {
-                        // 8xy5 - SUB Vx, Vy
-                        // Set Vx = Vx - Vy, set VF = NOT borrow.
-                        let vx = self.regs[x];
-                        let vy = self.regs[y];
-
-                        // Set if NO borrow
-                        self.regs[0xF] = (vx >= vy) as u8;
-                        self.regs[x] -= vy;
-
-                        self.print_i(old, opcode, &format!("SUB V{}, V{}", x, y));
-                    },
-                    0x8006 => {
-                        // 8xy6 - SHR Vx {, Vy}
-                        // Set Vx = Vx SHR 1.
-                        self.regs[0xF] = (self.regs[x] & 0x0001) as u8;
-                        self.regs[x] >>= 1;
-
-                        self.print_i(old, opcode, &format!("SHR V{}", x));
-                    },
-                    0x8007 => panic!("{:04x} not implemented!", opcode),
-                    0x800E => {
-                        // 8xyE - SHL Vx {, Vy}
-                        // Set Vx = Vx SHL 1.
-                        self.regs[0xF] = ((self.regs[x] & 0x80) == 0x80) as u8;
-                        self.regs[x] <<= 1;
-
-                        self.print_i(old, opcode, &format!("SHL V{}", x));
-                    },
-                    _ => panic!("Unknown opcode {:04x}", opcode),
-                }
-            },
-            0x9000 => {
-                // 9xy0 - SNE Vx, Vy
-                // Skip next instruction if Vx != Vy.
-                let x_idx = ((opcode & 0x0F00) >> 8) as usize;
-                let y_idx = ((opcode & 0x00F0) >> 4) as usize;
-
-                let x = self.regs[x_idx] as u32;
-                let y = self.regs[y_idx] as u32;
-
-                if x != y {
-                    self.pc += 2;
-                }
-
-                self.print_i(old, opcode, &format!("SNE V{}, V{}", x_idx, y_idx));
+                self.execute_two_reg_opcode(x, y, opcode, old);
             },
             0xA000 => {
                 // Annn - LD I, addr
@@ -358,6 +263,93 @@ impl Cpu {
             },
             _ => panic!("Unknown opcode {:04x}", opcode),
         };
+    }
+
+    fn execute_two_reg_opcode(&mut self, x: usize, y: usize, opcode: u16, old: u16) {
+        match opcode & 0xF00F {
+            0x5000 => {
+                // 5xy0 - SE Vx, Vy
+                // Skip next instruction if Vx == Vy.
+                if self.regs[x] == self.regs[y] {
+                    self.pc += 2;
+                }
+
+                self.print_i(old, opcode, &format!("SE V{}, V{}", x, y));
+            },
+            0x8000 => {
+                // 8xy0 - LD Vx, Vy
+                // Set Vx = Vy.
+                self.regs[x] = self.regs[y];
+
+                self.print_i(old, opcode, &format!("LD V{}, V{}", x, y));
+            },
+            0x8001 => panic!("{:04x} not implemented!", opcode),
+            0x8002 => {
+                // 8xy2 - AND Vx, Vy
+                // Set Vx = Vx AND Vy.
+                self.regs[x] &= self.regs[y];
+
+                self.print_i(old, opcode, &format!("AND V{}, V{}", x, y));
+            },
+            0x8003 => {
+                // 8xy3 - XOR Vx, Vy
+                // Set Vx = Vx XOR Vy.
+                self.regs[x] ^= self.regs[y];
+
+                self.print_i(old, opcode, &format!("XOR V{}, V{}", x, y));
+            }
+            0x8004 => {
+                // 8xy4 - ADD Vx, Vy
+                // Set Vx = Vx + Vy, set VF = carry.
+                let vx = self.regs[x] as u32;
+                let vy = self.regs[y] as u32;
+                let result = vx + vy;
+
+                self.regs[0xF] = (result > 0xFF) as u8;
+                self.regs[x] = result as u8;
+
+                self.print_i(old, opcode, &format!("ADD V{}, V{}", x, y));
+            },
+            0x8005 => {
+                // 8xy5 - SUB Vx, Vy
+                // Set Vx = Vx - Vy, set VF = NOT borrow.
+                let vx = self.regs[x];
+                let vy = self.regs[y];
+
+                // Set if NO borrow
+                self.regs[0xF] = (vx >= vy) as u8;
+                self.regs[x] -= vy;
+
+                self.print_i(old, opcode, &format!("SUB V{}, V{}", x, y));
+            },
+            0x8006 => {
+                // 8xy6 - SHR Vx {, Vy}
+                // Set Vx = Vx SHR 1.
+                self.regs[0xF] = (self.regs[x] & 0x0001) as u8;
+                self.regs[x] >>= 1;
+
+                self.print_i(old, opcode, &format!("SHR V{}", x));
+            },
+            0x8007 => panic!("{:04x} not implemented!", opcode),
+            0x800E => {
+                // 8xyE - SHL Vx {, Vy}
+                // Set Vx = Vx SHL 1.
+                self.regs[0xF] = ((self.regs[x] & 0x80) == 0x80) as u8;
+                self.regs[x] <<= 1;
+
+                self.print_i(old, opcode, &format!("SHL V{}", x));
+            },
+            0x9000 => {
+                // 9xy0 - SNE Vx, Vy
+                // Skip next instruction if Vx != Vy.
+                if self.regs[x] != self.regs[y] {
+                    self.pc += 2;
+                }
+
+                self.print_i(old, opcode, &format!("SNE V{}, V{}", x, y));
+            },
+            _ => panic!("Unknown opcode {:04x}", opcode),
+        }
     }
 
     fn print_i(&self, pc: u16, opcode: u16, rep: &str) {
