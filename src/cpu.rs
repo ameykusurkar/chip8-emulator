@@ -215,15 +215,22 @@ impl Cpu {
                 _ => panic!("Unknown opcode {:04x}", opcode),
             },
             0xF000 => match opcode & 0xF0FF {
-                0xF007 => panic!("{:04x} not implemented!", opcode),
+                0xF007 => {
+                    // Fx07 - LD Vx, DT
+                    // Set Vx = delay timer value.
+                    let x = ((opcode & 0x0F00) >> 8) as usize;
+                    self.regs[x] = self.delay_timer;
+
+                    self.print_i(old, opcode, &format!("LD V{}, DT", x));
+                },
                 0xF00A => panic!("{:04x} not implemented!", opcode),
                 0xF015 => {
                     // Fx15 - LD DT, Vx
                     // Set delay timer = Vx.
-                    let x_idx = ((opcode & 0x0F00) >> 8) as usize;
-                    self.delay_timer = self.regs[x_idx];
+                    let x = ((opcode & 0x0F00) >> 8) as usize;
+                    self.delay_timer = self.regs[x];
 
-                    self.print_i(old, opcode, &format!("LD DT V{}", x_idx));
+                    self.print_i(old, opcode, &format!("LD DT V{}", x));
                 },
                 0xF018 => panic!("{:04x} not implemented!", opcode),
                 0xF01E => {
