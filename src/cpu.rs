@@ -14,7 +14,7 @@ pub struct Cpu {
 
 impl Cpu {
     pub fn new() -> Cpu {
-        Cpu {
+        let mut cpu = Cpu {
             memory: [0; 4096],
             pc: 0x200,
             i: 0,
@@ -23,36 +23,17 @@ impl Cpu {
             delay_timer: 0,
             stack: [0; 16],
             sp: 0,
-        }
+        };
+
+        cpu.load_fontset();
+
+        cpu
     }
 
     pub fn load_binary(&mut self, binary: &Vec<u8>) {
         let start = 0x200;
         let binary_area = &mut self.memory[start..start+binary.len()];
         binary_area.copy_from_slice(binary);
-
-        // TODO: Fonts, your time has not come yet
-        // let font_set = [
-        //     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-        //     0x20, 0x60, 0x20, 0x20, 0x70, // 1
-        //     0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-        //     0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-        //     0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-        //     0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-        //     0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-        //     0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-        //     0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-        //     0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-        //     0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-        //     0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-        //     0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-        //     0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-        //     0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-        //     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
-        // ];
-
-        // let font_area = &mut self.memory[0..font_set.len()];
-        // font_area.copy_from_slice(&font_set);
     }
 
     pub fn timer_interrupt(&mut self) {
@@ -71,6 +52,30 @@ impl Cpu {
         self.execute(opcode);
 
         opcode & 0xF000 == 0xD000
+    }
+
+    fn load_fontset(&mut self) {
+        let fontset = [
+            0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+            0x20, 0x60, 0x20, 0x20, 0x70, // 1
+            0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+            0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+            0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+            0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+            0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+            0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+            0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+            0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+            0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+            0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+            0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+            0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+            0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+            0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+        ];
+
+        let fontset_area = &mut self.memory[0..fontset.len()];
+        fontset_area.copy_from_slice(&fontset);
     }
 
     fn fetch_opcode(&self) -> u16 {
@@ -241,8 +246,29 @@ impl Cpu {
 
                     self.print_i(old, opcode, &format!("ADD I, V{}", idx));
                 },
-                0xF029 => panic!("{:04x} not implemented!", opcode),
-                0xF033 => panic!("{:04x} not implemented!", opcode),
+                0xF029 => {
+                    // Fx29 - LD F, Vx
+                    // Set I = location of sprite for digit Vx.
+                    let x = ((opcode & 0x0F00) >> 8) as usize;
+
+                    // Each digit's sprite is 5 bytes long
+                    self.i = self.regs[x] as u16 * 5;
+
+                    self.print_i(old, opcode, &format!("LD F, V{}", x));
+                }
+                0xF033 => {
+                    // Fx33 - LD B, Vx
+                    // Store BCD representation of Vx in memory locations I, I+1, and I+2.
+                    let x = ((opcode & 0x0F00) >> 8) as usize;
+                    let vx = self.regs[x];
+                    let i = self.i as usize;
+
+                    self.memory[i] = vx / 100; // hundreds digit
+                    self.memory[i + 1] = (vx / 10) % 10; // tens digit
+                    self.memory[i + 2] = (vx % 100) % 10; // ones digit
+
+                    self.print_i(old, opcode, &format!("LD B, V{}", x));
+                },
                 0xF055 => {
                     // Fx55 - LD [I], Vx
                     // Store registers V0 through Vx in memory starting at location I.
