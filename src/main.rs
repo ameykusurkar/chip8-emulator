@@ -32,7 +32,7 @@ fn main() -> std::io::Result<()> {
     let redraw_interval = (1000.0 / REFRESH_RATE as f64) as u64;
     let cycles_per_refresh = CLOCK_SPEED / REFRESH_RATE;
 
-    loop {
+    while window.is_open() {
         for _ in 0..cycles_per_refresh {
             cpu.cycle();
         }
@@ -44,4 +44,6 @@ fn main() -> std::io::Result<()> {
         cpu.timer_interrupt();
         window.update(cpu.display_buffer());
     }
+
+    Ok(())
 }

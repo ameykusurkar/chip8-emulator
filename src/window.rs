@@ -30,4 +30,8 @@ impl Window {
             .update_with_buffer(&buffer, self.width, self.height)
             .unwrap();
     }
+
+    pub fn is_open(&self) -> bool {
+        self.window.is_open()
+    }
 }
