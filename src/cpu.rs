@@ -8,6 +8,8 @@ pub struct Cpu {
     regs: [u8; 16],
     display: Display,
     delay_timer: u8,
+    stack: [u16; 16],
+    sp: u8,
 }
 
 impl Cpu {
@@ -19,6 +21,8 @@ impl Cpu {
             regs: [0; 16],
             display: Display::new(),
             delay_timer: 0,
+            stack: [0; 16],
+            sp: 0,
         }
     }
 
@@ -26,6 +30,29 @@ impl Cpu {
         let start = 0x200;
         let binary_area = &mut self.memory[start..start+binary.len()];
         binary_area.copy_from_slice(binary);
+
+        // TODO: Fonts, your time has not come yet
+        // let font_set = [
+        //     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+        //     0x20, 0x60, 0x20, 0x20, 0x70, // 1
+        //     0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+        //     0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+        //     0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+        //     0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+        //     0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+        //     0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+        //     0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+        //     0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+        //     0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+        //     0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+        //     0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+        //     0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+        //     0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+        //     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+        // ];
+
+        // let font_area = &mut self.memory[0..font_set.len()];
+        // font_area.copy_from_slice(&font_set);
     }
 
     pub fn timer_interrupt(&mut self) {
@@ -66,8 +93,20 @@ impl Cpu {
                     self.display.clear();
                     self.print_i(old, opcode, "CLS");
                 },
-                0x00EE => panic!("{:04x} not implemented!", opcode),
-                _ => panic!("Unknown opcode {:04x}", opcode),
+                0x00EE => {
+                    // 00EE - RET
+                    // Return from a subroutine.
+                    self.sp -= 1;
+                    self.pc = self.stack[self.sp as usize];
+
+                    self.print_i(old, opcode, "RET");
+                }
+                _ => {
+                    // This instruction is SYS nnn, which calls a subroutine
+                    // only needed by older computers. Can be ignored.
+                    let addr = opcode & 0x0FFF;
+                    self.print_i(old, opcode, &format!("SYS {:04x}", addr));
+                },
             },
             0x1000 => {
                 // 1nnn - JP addr
@@ -77,7 +116,17 @@ impl Cpu {
 
                 self.print_i(old, opcode, &format!("JMP {:04x}", addr));
             },
-            0x2000 => panic!("{:04x} not implemented!", opcode),
+            0x2000 => {
+                // 2nnn - CALL addr
+                // Call subroutine at nnn.
+                let addr = opcode & 0x0FFF;
+
+                self.stack[self.sp as usize] = self.pc;
+                self.sp += 1;
+                self.pc = addr;
+
+                self.print_i(old, opcode, &format!("CALL {:04x}", addr));
+            },
             0x3000 => {
                 // 3xkk - SE Vx, byte
                 // Skip next instruction if Vx == kk.
@@ -145,8 +194,25 @@ impl Cpu {
                     self.print_i(old, opcode, &format!("LD V{}, V{}", x_idx, y_idx));
                 },
                 0x8001 => panic!("{:04x} not implemented!", opcode),
-                0x8002 => panic!("{:04x} not implemented!", opcode),
-                0x8003 => panic!("{:04x} not implemented!", opcode),
+                0x8002 => {
+                    // 8xy2 - AND Vx, Vy
+                    // Set Vx = Vx AND Vy.
+                    let x_idx = ((opcode & 0x0F00) >> 8) as usize;
+                    let y_idx = ((opcode & 0x00F0) >> 4) as usize;
+
+                    self.regs[x_idx] &= self.regs[y_idx];
+
+                    self.print_i(old, opcode, &format!("AND V{}, V{}", x_idx, y_idx));
+                },
+                0x8003 => {
+                    // 8xy3 - XOR Vx, Vy
+                    // Set Vx = Vx XOR Vy.
+                    let x_idx = ((opcode & 0x0F00) >> 8) as usize;
+                    let y_idx = ((opcode & 0x00F0) >> 4) as usize;
+
+                    self.regs[x_idx] ^= self.regs[y_idx];
+                    self.print_i(old, opcode, &format!("XOR V{}, V{}", x_idx, y_idx));
+                }
                 0x8004 => {
                     // 8xy4 - ADD Vx, Vy
                     // Set Vx = Vx + Vy, set VF = carry.
@@ -177,9 +243,28 @@ impl Cpu {
 
                     self.print_i(old, opcode, &format!("SUB V{}, V{}", x_idx, y_idx));
                 },
-                0x8006 => panic!("{:04x} not implemented!", opcode),
+                0x8006 => {
+                    // 8xy6 - SHR Vx {, Vy}
+                    // Set Vx = Vx SHR 1.
+                    let x_idx = ((opcode & 0x0F00) >> 8) as usize;
+                    let vx = self.regs[x_idx];
+                    self.regs[0xF] = (vx & 0x0001) as u8;
+                    self.regs[x_idx] = vx >> 1;
+
+                    self.print_i(old, opcode, &format!("SHR V{}", x_idx));
+                },
                 0x8007 => panic!("{:04x} not implemented!", opcode),
-                0x800E => panic!("{:04x} not implemented!", opcode),
+                0x800E => {
+                    // 8xyE - SHL Vx {, Vy}
+                    // Set Vx = Vx SHL 1.
+                    let x_idx = ((opcode & 0x0F00) >> 8) as usize;
+                    let vx = self.regs[x_idx];
+
+                    self.regs[0xF] = ((vx & 0x80) == 0x80) as u8;
+                    self.regs[x_idx] = vx << 1;
+
+                    self.print_i(old, opcode, &format!("SHL V{}", x_idx));
+                },
                 _ => panic!("Unknown opcode {:04x}", opcode),
             },
             0x9000 => {
