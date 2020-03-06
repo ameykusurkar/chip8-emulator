@@ -10,6 +10,9 @@ pub struct Cpu {
     delay_timer: u8,
     stack: [u16; 16],
     sp: u8,
+    keyboard: [bool; 16],
+    awaiting_key_press: bool,
+    current_key_pressed: Option<u8>,
 }
 
 impl Cpu {
@@ -23,6 +26,9 @@ impl Cpu {
             delay_timer: 0,
             stack: [0; 16],
             sp: 0,
+            keyboard: [false; 16],
+            awaiting_key_press: false,
+            current_key_pressed: None,
         };
 
         cpu.load_fontset();
@@ -39,6 +45,23 @@ impl Cpu {
     pub fn timer_interrupt(&mut self) {
         if self.delay_timer > 0 {
             self.delay_timer -= 1;
+        }
+    }
+
+    pub fn key_press_interrupt(&mut self, key: u8) {
+        if self.awaiting_key_press {
+            self.current_key_pressed = Some(key);
+            self.awaiting_key_press = false;
+        }
+    }
+
+    pub fn update_keyboard(&mut self, keys: &[u8]) {
+        for k in &mut self.keyboard {
+            *k = false;
+        }
+
+        for key in keys {
+            self.keyboard[*key as usize] = true;
         }
     }
 
@@ -85,6 +108,10 @@ impl Cpu {
     }
 
     fn execute(&mut self, opcode: u16) {
+        if self.awaiting_key_press {
+            return;
+        }
+
         // TODO: Only for debugging
         let old = self.pc;
 
@@ -215,8 +242,30 @@ impl Cpu {
                 self.print_i(old, opcode, &format!("DRW V{}, V{}, {:x}", x_idx, y_idx, n));
             },
             0xE000 => match opcode & 0xF0FF {
-                0xE09E => panic!("{:04x} not implemented!", opcode),
-                0xE0A1 => panic!("{:04x} not implemented!", opcode),
+                0xE09E => {
+                    // Ex9E - SKP Vx
+                    // Skip next instruction if key with the value of Vx is pressed.
+                    let x = ((opcode & 0x0F00) >> 8) as usize;
+                    let vx = self.regs[x] as usize;
+
+                    if self.keyboard[vx] {
+                        self.pc += 2;
+                    }
+
+                    self.print_i(old, opcode, &format!("SKP V{}", x));
+                }
+                0xE0A1 => {
+                    // ExA1 - SKNP Vx
+                    // Skip next instruction if key with the value of Vx is not pressed.
+                    let x = ((opcode & 0x0F00) >> 8) as usize;
+                    let vx = self.regs[x] as usize;
+
+                    if !self.keyboard[vx] {
+                        self.pc += 2;
+                    }
+
+                    self.print_i(old, opcode, &format!("SKNP V{}", x));
+                }
                 _ => panic!("Unknown opcode {:04x}", opcode),
             },
             0xF000 => match opcode & 0xF0FF {
@@ -228,7 +277,31 @@ impl Cpu {
 
                     self.print_i(old, opcode, &format!("LD V{}, DT", x));
                 },
-                0xF00A => panic!("{:04x} not implemented!", opcode),
+                0xF00A => {
+                    // Fx0A - LD Vx, K
+                    // Wait for a key press, store the value of the key in Vx.
+
+                    // Since this is a blocking instruction, we will loop on this
+                    // instruction until a key is pressed. Meanwhile, the calling code
+                    // is waiting looking for key presses, communicated via
+                    // `key_press_interrupt()`. Hence when we hit this instruction,
+                    // there are two possible scenarios:
+                    //  1. This isn't the first iteration of the loop, and a key has
+                    //     has already been pressed (`execute()` returns early if
+                    //     there hasn't been a key press yet). In that case we can
+                    //     reset the flag and progress.
+                    //  2. This is the first iteration of the loop. In that case we need
+                    //     to indicate that we need to loop, and rollback the program
+                    //     counter to the current instruction so that we don't progress.
+                    if let Some(key) = self.current_key_pressed {
+                        let x = ((opcode & 0x0F00) >> 8) as usize;
+                        self.regs[x] = key;
+                        self.current_key_pressed = None;
+                    } else {
+                        self.awaiting_key_press = true;
+                        self.pc -= 2;
+                    }
+                },
                 0xF015 => {
                     // Fx15 - LD DT, Vx
                     // Set delay timer = Vx.
