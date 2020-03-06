@@ -10,6 +10,7 @@ pub struct Cpu {
     delay_timer: u8,
     stack: [u16; 16],
     sp: u8,
+    keyboard: [bool; 16],
     awaiting_key_press: bool,
     current_key_pressed: Option<u8>,
 }
@@ -25,6 +26,7 @@ impl Cpu {
             delay_timer: 0,
             stack: [0; 16],
             sp: 0,
+            keyboard: [false; 16],
             awaiting_key_press: false,
             current_key_pressed: None,
         };
@@ -50,6 +52,16 @@ impl Cpu {
         if self.awaiting_key_press {
             self.current_key_pressed = Some(key);
             self.awaiting_key_press = false;
+        }
+    }
+
+    pub fn update_keyboard(&mut self, keys: &[u8]) {
+        for k in &mut self.keyboard {
+            *k = false;
+        }
+
+        for key in keys {
+            self.keyboard[*key as usize] = true;
         }
     }
 
@@ -230,8 +242,30 @@ impl Cpu {
                 self.print_i(old, opcode, &format!("DRW V{}, V{}, {:x}", x_idx, y_idx, n));
             },
             0xE000 => match opcode & 0xF0FF {
-                0xE09E => panic!("{:04x} not implemented!", opcode),
-                0xE0A1 => panic!("{:04x} not implemented!", opcode),
+                0xE09E => {
+                    // Ex9E - SKP Vx
+                    // Skip next instruction if key with the value of Vx is pressed.
+                    let x = ((opcode & 0x0F00) >> 8) as usize;
+                    let vx = self.regs[x] as usize;
+
+                    if self.keyboard[vx] {
+                        self.pc += 2;
+                    }
+
+                    self.print_i(old, opcode, &format!("SKP V{}", x));
+                }
+                0xE0A1 => {
+                    // ExA1 - SKNP Vx
+                    // Skip next instruction if key with the value of Vx is not pressed.
+                    let x = ((opcode & 0x0F00) >> 8) as usize;
+                    let vx = self.regs[x] as usize;
+
+                    if !self.keyboard[vx] {
+                        self.pc += 2;
+                    }
+
+                    self.print_i(old, opcode, &format!("SKNP V{}", x));
+                }
                 _ => panic!("Unknown opcode {:04x}", opcode),
             },
             0xF000 => match opcode & 0xF0FF {

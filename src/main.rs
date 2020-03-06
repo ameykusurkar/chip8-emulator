@@ -33,8 +33,12 @@ fn main() -> std::io::Result<()> {
     let cycles_per_refresh = CLOCK_SPEED / REFRESH_RATE;
 
     while window.is_open() {
-        window.get_keys_pressed().
-            map(|keys| cpu.key_press_interrupt(keys[0]));
+        if let Some(keys) = window.get_keys_pressed() {
+            cpu.update_keyboard(&keys);
+            cpu.key_press_interrupt(keys[0]);
+        } else {
+            cpu.update_keyboard(&[]);
+        }
 
         for _ in 0..cycles_per_refresh {
             cpu.cycle();
