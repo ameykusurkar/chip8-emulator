@@ -3,10 +3,14 @@ An implementation of CHIP-8 in Rust
 
 ### Usage
 ```shell
-cargo run --release <chip8-rom>
+cargo run --release <rom>
 ```
 
-The implementation is still a work in progress; not all the opcodes have been implemented yet, but enough have been implemented to make a good number of ROMs still work. For example, run:
+I've added somes games in the `roms` folder to try out. For example, run:
 ```shell
-cargo run --release roms/tetris.ch8
+cargo run --release roms/breakout.ch8
 ```
+
+### References
+ - [Cowgod's Chip-8 reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM)
+ - [How to write an emulator](http://www.multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/)
