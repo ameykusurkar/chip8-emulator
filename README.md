@@ -1,5 +1,5 @@
 # chip8-emulator
-An implementation of the CHIP-8 interpreter
+An implementation of the [CHIP-8 interpreter](https://en.wikipedia.org/wiki/CHIP-8)
 
 <p align="center">
   <img src="breakout_example.png">
