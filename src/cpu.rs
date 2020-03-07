@@ -112,7 +112,7 @@ impl Cpu {
             return;
         }
 
-        // TODO: Only for debugging
+        // Only used for debugging
         let old = self.pc;
 
         self.pc += 2;

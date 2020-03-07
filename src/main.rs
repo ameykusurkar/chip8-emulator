@@ -58,7 +58,7 @@ fn main() -> std::io::Result<()> {
 
         let cpu_elapsed = now.elapsed().as_millis() as u64;
 
-        // Just for now, while we print execution
+        // Ensures opcodes are printed, for debugging
         std::io::stdout().flush()?;
 
         std::thread::sleep(std::time::Duration::from_millis(redraw_interval - cpu_elapsed));
