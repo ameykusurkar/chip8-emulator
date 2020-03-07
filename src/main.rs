@@ -18,8 +18,8 @@ const CLOCK_SPEED: u32 = 540;
 const REFRESH_RATE: u32 = 60;
 
 fn main() -> std::io::Result<()> {
-    let path = std::env::args().nth(1);
-    let mut f = File::open(path.unwrap())?;
+    let path = std::env::args().nth(1).unwrap();
+    let mut f = File::open(&path)?;
 
     let mut buffer = Vec::new();
     f.read_to_end(&mut buffer)?;
@@ -28,6 +28,7 @@ fn main() -> std::io::Result<()> {
     cpu.load_binary(&buffer);
 
     let mut window = Window::new(WIDTH, HEIGHT);
+    window.set_title(&format!("CHIP-8 ({})", path));
 
     let redraw_interval = (1000.0 / REFRESH_RATE as f64) as u64;
     let cycles_per_refresh = CLOCK_SPEED / REFRESH_RATE;

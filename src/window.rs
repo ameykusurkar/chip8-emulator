@@ -21,6 +21,10 @@ impl Window {
         Window { window, width, height }
     }
 
+    pub fn set_title(&mut self, title: &str) {
+        self.window.set_title(title);
+    }
+
     pub fn update(&mut self, buffer: &[bool]) {
         let buffer: Vec<u32> = buffer.iter()
             .map(|x| if *x { 0x00ECF0F1 } else { 0 })
