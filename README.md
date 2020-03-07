@@ -3,7 +3,7 @@ An implementation of CHIP-8 in Rust
 
 ### Usage
 ```shell
-cargo run --release <rom>
+cargo run --release <path/to/rom>
 ```
 
 I've added somes games in the `roms` folder to try out. For example, run:
