@@ -18,6 +18,15 @@ const CLOCK_SPEED: u32 = 540;
 const REFRESH_RATE: u32 = 60;
 
 fn main() -> std::io::Result<()> {
+    if std::env::args().len() < 2 {
+        println!(
+            "Please provide a rom file. Example usage:\n\n  \
+            cargo run --release roms/breakout.ch8"
+        );
+
+        return Ok(())
+    }
+
     let path = std::env::args().nth(1).unwrap();
     let mut f = File::open(&path)?;
 
