@@ -33,6 +33,8 @@ fn main() -> std::io::Result<()> {
     let cycles_per_refresh = CLOCK_SPEED / REFRESH_RATE;
 
     while window.is_open() {
+        let now = std::time::Instant::now();
+
         if let Some(keys) = window.get_keys_pressed() {
             cpu.update_keyboard(&keys);
             cpu.key_press_interrupt(keys[0]);
@@ -44,10 +46,12 @@ fn main() -> std::io::Result<()> {
             cpu.cycle();
         }
 
+        let cpu_elapsed = now.elapsed().as_millis() as u64;
+
         // Just for now, while we print execution
         std::io::stdout().flush()?;
 
-        std::thread::sleep(std::time::Duration::from_millis(redraw_interval));
+        std::thread::sleep(std::time::Duration::from_millis(redraw_interval - cpu_elapsed));
         cpu.timer_interrupt();
         window.update(cpu.display_buffer());
     }

@@ -35,8 +35,8 @@ impl Window {
         self.window.is_open()
     }
 
-    pub fn get_keys_pressed(&self) -> Option<Vec<u8>> {
-        self.window.get_keys_pressed(minifb::KeyRepeat::Yes)
+    pub fn get_keys_pressed(&mut self) -> Option<Vec<u8>> {
+        self.window.get_keys()
             .map(|keys| keys.iter().filter_map(|k| Self::decode_key(&k)).collect())
             .filter(|keys: &Vec<u8>| !keys.is_empty())
     }
