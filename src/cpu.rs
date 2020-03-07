@@ -213,7 +213,14 @@ impl Cpu {
 
                 self.print_i(old, opcode, &format!("LD I, {:04x}", addr));
             },
-            0xB000 => panic!("{:04x} not implemented!", opcode),
+            0xB000 => {
+                // Bnnn - JP V0, addr
+                // Jump to location nnn + V0.
+                let addr = opcode & 0x0FFF;
+                self.pc = addr + self.regs[0] as u16;
+
+                self.print_i(old, opcode, &format!("JP V0, {:04x}", addr));
+            },
             0xC000 => {
                 // Cxkk - RND Vx, byte
                 // Set Vx = random byte AND kk.
@@ -310,7 +317,13 @@ impl Cpu {
 
                     self.print_i(old, opcode, &format!("LD DT V{}", x));
                 },
-                0xF018 => panic!("{:04x} not implemented!", opcode),
+                0xF018 => {
+                    // Fx18 - LD ST, Vx
+                    // Set sound timer = Vx.
+
+                    // TODO: No-op for now. The current framebuffer library being
+                    // used does not support audio output.
+                },
                 0xF01E => {
                     // Fx1E - ADD I, Vx
                     // Set I = I + Vx.
@@ -389,7 +402,13 @@ impl Cpu {
 
                 self.print_i(old, opcode, &format!("LD V{}, V{}", x, y));
             },
-            0x8001 => panic!("{:04x} not implemented!", opcode),
+            0x8001 => {
+                // 8xy1 - OR Vx, Vy
+                // Set Vx = Vx OR Vy.
+                self.regs[x] |= self.regs[y];
+
+                self.print_i(old, opcode, &format!("OR V{}, V{}", x, y));
+            },
             0x8002 => {
                 // 8xy2 - AND Vx, Vy
                 // Set Vx = Vx AND Vy.
@@ -436,7 +455,18 @@ impl Cpu {
 
                 self.print_i(old, opcode, &format!("SHR V{}", x));
             },
-            0x8007 => panic!("{:04x} not implemented!", opcode),
+            0x8007 => {
+                // 8xy7 - SUBN Vx, Vy
+                // Set Vx = Vy - Vx, set VF = NOT borrow.
+                let vx = self.regs[x];
+                let vy = self.regs[y];
+
+                // Set if NO borrow
+                self.regs[0xF] = (vy >= vx) as u8;
+                self.regs[x] = vy - vx;
+
+                self.print_i(old, opcode, &format!("SUBN V{}, V{}", x, y));
+            },
             0x800E => {
                 // 8xyE - SHL Vx {, Vy}
                 // Set Vx = Vx SHL 1.
