@@ -1,6 +1,7 @@
 # chip8-emulator
 An implementation of the CHIP-8 interpreter
 
+![A game of Breakout](breakout_example.png)
 ### Usage
 ```shell
 cargo run --release <path/to/rom>
